@@ -1,73 +1,100 @@
-# Welcome to your Lovable project
+# Visualizador de Backup WhatsApp
 
-## Project info
+Visualize seus backups do WhatsApp (iMazing) em um formato bonito e organizado, similar ao WhatsApp Web.
 
-**URL**: https://lovable.dev/projects/bdf437c2-812a-43c7-ac7b-ffdaf978c659
+## 🚀 Recursos
 
-## How can I edit this code?
+- ✅ **Interface WhatsApp Web** - Design familiar e intuitivo
+- ✅ **100% Local** - Processa tudo no navegador (máxima privacidade)
+- ✅ **Busca Inteligente** - Busca global e dentro de conversas
+- ✅ **Anexos Visuais** - Imagens, vídeos, áudios com preview
+- ✅ **Performance** - Otimizado para backups grandes (70x+)
+- ✅ **Busca Flexível de Anexos** - Encontra arquivos por nome base, ignora extensão
 
-There are several ways of editing your application.
+## 📦 Como Usar
 
-**Use Lovable**
+### 1. Fazer Upload do Backup
+1. Abra o app
+2. Clique em "Selecionar arquivo .db"
+3. Escolha seu arquivo de backup do iMazing
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/bdf437c2-812a-43c7-ac7b-ffdaf978c659) and start prompting.
+### 2. Carregar Anexos (Opcional)
+1. Clique em "Carregar Anexos"
+2. Selecione a pasta `anexos/` do seu backup
+3. Aguarde indexação (busca por nome base, ignora extensão)
 
-Changes made via Lovable will be committed automatically to this repo.
+### 3. Visualizar Conversas
+- Clique em uma conversa na sidebar
+- Navegue pelas mensagens
+- Use a busca para encontrar mensagens específicas
+- Imagens/vídeos aparecem automaticamente se anexos foram carregados
 
-**Use your preferred IDE**
+## 🔍 Busca de Anexos
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+**IMPORTANTE:** O sistema busca anexos **apenas pelo nome base**, ignorando a extensão:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+Exemplo:
+- Banco de dados: "foto.webm"
+- Arquivo real: "foto.png"
+- Resultado: ✅ ENCONTRADO
 ```
 
-**Edit a file directly in GitHub**
+Isso resolve o problema de extensões incorretas no banco de dados.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🚢 Deploy
 
-**Use GitHub Codespaces**
+### Opção 1: Lovable (Recomendado)
+1. Clique em **Publish** no canto superior direito
+2. Escolha um subdomínio
+3. Pronto! Acesse sua URL
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Opção 2: Domínio Próprio
+1. Vá em Settings → Domains
+2. Conecte seu domínio
+3. Configure DNS
 
-## What technologies are used for this project?
+**Veja [DEPLOY.md](DEPLOY.md) para instruções completas**
 
-This project is built with:
+## 🔒 Privacidade
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
+- ✅ Nada é enviado para servidor
+- ✅ Processamento 100% local no navegador
+- ✅ Anexos ficam apenas na sua máquina
+- ✅ Código open-source (auditável)
+
+## 🛠️ Tecnologias
+
+- React + TypeScript
 - Tailwind CSS
+- sql.js (SQLite no navegador)
+- Vite
+- shadcn/ui
 
-## How can I deploy this project?
+## 📋 Requisitos do Backup
 
-Simply open [Lovable](https://lovable.dev/projects/bdf437c2-812a-43c7-ac7b-ffdaf978c659) and click on Share -> Publish.
+- Arquivo `.db` do iMazing (SQLite)
+- Tabela `messages` com campos:
+  - `id`, `nome_contato`, `source_file`
+  - `data_hora_envio`, `tipo_mensagem`
+  - `texto_mensagem`, `anexo_id_arquivo`
+  - `anexo_tipo`, `anexo_tamanho`
+  - E outros campos relevantes
 
-## Can I connect a custom domain to my Lovable project?
+## 🤝 Contribuindo
 
-Yes, you can!
+Este projeto foi criado no [Lovable](https://lovable.dev). Para contribuir:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+1. Clone o repositório
+2. `npm install`
+3. `npm run dev`
+4. Faça suas alterações
+5. Envie um PR
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 📝 Licença
+
+MIT License - use como quiser!
+
+---
+
+**Feito com ❤️ no [Lovable](https://lovable.dev)**
