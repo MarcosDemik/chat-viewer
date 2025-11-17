@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, FolderOpen } from "lucide-react";
 import { ConversationList } from "./whatsapp/ConversationList";
 import { ChatPanel } from "./whatsapp/ChatPanel";
 import { WhatsAppHeader } from "./whatsapp/WhatsAppHeader";
 import { useToast } from "@/hooks/use-toast";
 import { SQLiteProcessor, type Conversation } from "@/lib/sqlite-processor";
+import { AttachmentManager } from "@/lib/attachment-manager";
+import { Button } from "./ui/button";
 
 interface WhatsAppViewerProps {
   dbFile: File;
@@ -17,6 +19,8 @@ export const WhatsAppViewer = ({ dbFile, onReset }: WhatsAppViewerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [globalSearch, setGlobalSearch] = useState("");
   const [sqliteProcessor, setSqliteProcessor] = useState<SQLiteProcessor | null>(null);
+  const [attachmentManager] = useState(() => new AttachmentManager());
+  const [attachmentsLoaded, setAttachmentsLoaded] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,6 +31,7 @@ export const WhatsAppViewer = ({ dbFile, onReset }: WhatsAppViewerProps) => {
       if (sqliteProcessor) {
         sqliteProcessor.close();
       }
+      attachmentManager.clear();
     };
   }, [dbFile]);
 
@@ -57,6 +62,28 @@ export const WhatsAppViewer = ({ dbFile, onReset }: WhatsAppViewerProps) => {
     conv.source_file.toLowerCase().includes(globalSearch.toLowerCase())
   );
 
+  const handleAttachmentsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      await attachmentManager.loadAttachments(files);
+      setAttachmentsLoaded(true);
+      
+      toast({
+        title: "Anexos carregados",
+        description: `${attachmentManager.getCount()} arquivos de anexo indexados com sucesso`,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar anexos:', error);
+      toast({
+        title: "Erro ao carregar anexos",
+        description: "Não foi possível carregar os arquivos de anexo",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -75,6 +102,44 @@ export const WhatsAppViewer = ({ dbFile, onReset }: WhatsAppViewerProps) => {
         globalSearch={globalSearch}
         onGlobalSearchChange={setGlobalSearch}
       />
+
+      {/* Botão para carregar anexos */}
+      {!attachmentsLoaded && (
+        <div className="bg-muted/50 border-b border-border px-4 py-2">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <FolderOpen className="h-4 w-4" />
+              <span>Para visualizar imagens e vídeos, carregue a pasta de anexos</span>
+            </div>
+            <label htmlFor="attachments-upload">
+              <Button variant="outline" size="sm" asChild>
+                <div className="cursor-pointer">
+                  Carregar Anexos
+                </div>
+              </Button>
+              <input
+                id="attachments-upload"
+                type="file"
+                multiple
+                // @ts-ignore - webkitdirectory is not in types
+                webkitdirectory=""
+                directory=""
+                className="hidden"
+                onChange={handleAttachmentsUpload}
+              />
+            </label>
+          </div>
+        </div>
+      )}
+
+      {attachmentsLoaded && (
+        <div className="bg-primary/10 border-b border-border px-4 py-2">
+          <div className="flex items-center justify-center gap-2 text-sm text-primary">
+            <FolderOpen className="h-4 w-4" />
+            <span>{attachmentManager.getCount()} anexos carregados</span>
+          </div>
+        </div>
+      )}
       
       <div className="flex flex-1 overflow-hidden">
         <ConversationList
@@ -86,6 +151,7 @@ export const WhatsAppViewer = ({ dbFile, onReset }: WhatsAppViewerProps) => {
         <ChatPanel
           conversation={selectedConversation}
           sqliteProcessor={sqliteProcessor}
+          attachmentManager={attachmentManager}
         />
       </div>
     </div>

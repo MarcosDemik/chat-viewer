@@ -3,13 +3,15 @@ import { MessageSquare } from "lucide-react";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSearch } from "./ChatSearch";
 import type { Conversation, SQLiteProcessor } from "@/lib/sqlite-processor";
+import type { AttachmentManager } from "@/lib/attachment-manager";
 
 interface ChatPanelProps {
   conversation: Conversation | null;
   sqliteProcessor: SQLiteProcessor | null;
+  attachmentManager: AttachmentManager | null;
 }
 
-export const ChatPanel = ({ conversation, sqliteProcessor }: ChatPanelProps) => {
+export const ChatPanel = ({ conversation, sqliteProcessor, attachmentManager }: ChatPanelProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
@@ -63,6 +65,7 @@ export const ChatPanel = ({ conversation, sqliteProcessor }: ChatPanelProps) => 
       <ChatMessages
         conversation={conversation}
         sqliteProcessor={sqliteProcessor}
+        attachmentManager={attachmentManager}
         searchTerm={searchTerm}
         onSearchResultsChange={setSearchResults}
         highlightedMessageId={searchResults[currentSearchIndex]}

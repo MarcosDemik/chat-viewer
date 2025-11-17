@@ -1,13 +1,16 @@
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck, Paperclip } from "lucide-react";
+import { Check, CheckCheck } from "lucide-react";
 import type { Message } from "@/lib/sqlite-processor";
+import type { AttachmentManager } from "@/lib/attachment-manager";
+import { AttachmentPreview } from "./AttachmentPreview";
 
 interface MessageBubbleProps {
   message: Message;
+  attachmentManager: AttachmentManager | null;
   isHighlighted?: boolean;
 }
 
-export const MessageBubble = ({ message, isHighlighted }: MessageBubbleProps) => {
+export const MessageBubble = ({ message, attachmentManager, isHighlighted }: MessageBubbleProps) => {
   const isSent = message.tipo_mensagem === 'Enviadas';
   const isDelivered = message.status_mensagem === 'Entregue';
   const isRead = message.status_mensagem === 'Lida';
@@ -25,16 +28,6 @@ export const MessageBubble = ({ message, isHighlighted }: MessageBubbleProps) =>
     } catch {
       return dateStr;
     }
-  };
-
-  const formatFileSize = (bytes: string | null) => {
-    if (!bytes) return '';
-    const size = parseInt(bytes);
-    if (isNaN(size)) return bytes;
-    
-    if (size < 1024) return `${size} B`;
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -60,21 +53,14 @@ export const MessageBubble = ({ message, isHighlighted }: MessageBubbleProps) =>
           </div>
         )}
 
-        {/* Attachment info */}
-        {message.anexo_tipo && (
-          <div className="mb-2 flex items-center gap-2 rounded bg-background/50 p-2 text-xs">
-            <Paperclip className="h-4 w-4" />
-            <div className="flex-1">
-              <div className="font-medium">
-                {message.anexo_tipo} {message.anexo_tamanho && `• ${formatFileSize(message.anexo_tamanho)}`}
-              </div>
-              {message.anexo_id_arquivo && (
-                <div className="text-muted-foreground truncate">
-                  {message.anexo_id_arquivo}
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Attachment preview - CRÍTICO: busca por nome base, ignora extensão */}
+        {message.anexo_id_arquivo && message.anexo_tipo && (
+          <AttachmentPreview
+            anexoIdArquivo={message.anexo_id_arquivo}
+            anexoTipo={message.anexo_tipo}
+            anexoTamanho={message.anexo_tamanho}
+            attachmentManager={attachmentManager}
+          />
         )}
 
         {/* Message text */}
@@ -83,8 +69,6 @@ export const MessageBubble = ({ message, isHighlighted }: MessageBubbleProps) =>
             {message.texto_mensagem}
           </div>
         )}
-
-        {/* Message footer */}
         <div className="mt-1 flex items-center justify-end gap-1 text-xs opacity-70">
           <span>{formatDateTime(message.data_hora_envio)}</span>
           {isSent && (

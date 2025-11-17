@@ -4,10 +4,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
 import { useToast } from "@/hooks/use-toast";
 import type { Conversation, SQLiteProcessor, Message } from "@/lib/sqlite-processor";
+import type { AttachmentManager } from "@/lib/attachment-manager";
 
 interface ChatMessagesProps {
   conversation: Conversation;
   sqliteProcessor: SQLiteProcessor | null;
+  attachmentManager: AttachmentManager | null;
   searchTerm: string;
   onSearchResultsChange: (results: number[]) => void;
   highlightedMessageId?: number;
@@ -18,6 +20,7 @@ const MESSAGES_PER_BATCH = 400;
 export const ChatMessages = ({
   conversation,
   sqliteProcessor,
+  attachmentManager,
   searchTerm,
   onSearchResultsChange,
   highlightedMessageId,
@@ -144,6 +147,7 @@ export const ChatMessages = ({
           >
             <MessageBubble
               message={message}
+              attachmentManager={attachmentManager}
               isHighlighted={highlightedMessageId === message.id}
             />
           </div>
