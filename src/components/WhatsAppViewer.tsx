@@ -4,14 +4,7 @@ import { ConversationList } from "./whatsapp/ConversationList";
 import { ChatPanel } from "./whatsapp/ChatPanel";
 import { WhatsAppHeader } from "./whatsapp/WhatsAppHeader";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-
-export interface Conversation {
-  id: string;
-  nome_contato: string;
-  source_file: string;
-  messageCount: number;
-}
+import { SQLiteProcessor, type Conversation } from "@/lib/sqlite-processor";
 
 interface WhatsAppViewerProps {
   dbFile: File;
@@ -23,45 +16,36 @@ export const WhatsAppViewer = ({ dbFile, onReset }: WhatsAppViewerProps) => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [sqliteProcessor, setSqliteProcessor] = useState<SQLiteProcessor | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadConversations();
+    
+    // Cleanup on unmount
+    return () => {
+      if (sqliteProcessor) {
+        sqliteProcessor.close();
+      }
+    };
   }, [dbFile]);
 
   const loadConversations = async () => {
     try {
       setIsLoading(true);
       
-      // Convert file to base64 for transmission
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64Data = e.target?.result as string;
-        
-        // Call edge function to process SQLite file
-        const { data, error } = await supabase.functions.invoke('whatsapp-backup', {
-          body: { 
-            action: 'list_conversations',
-            dbFile: base64Data.split(',')[1] // Remove data:application/octet-stream;base64, prefix
-          },
-        });
-
-        if (error) throw error;
-        
-        setConversations(data.conversations || []);
-        setIsLoading(false);
-      };
+      // Process SQLite file directly in the browser
+      const processor = await SQLiteProcessor.fromFile(dbFile);
+      setSqliteProcessor(processor);
       
-      reader.onerror = () => {
-        throw new Error("Erro ao ler arquivo");
-      };
-      
-      reader.readAsDataURL(dbFile);
+      const convos = processor.listConversations();
+      setConversations(convos);
+      setIsLoading(false);
     } catch (error) {
       console.error('Erro ao carregar conversas:', error);
       toast({
         title: "Erro ao carregar backup",
-        description: "Não foi possível processar o arquivo de backup",
+        description: "Não foi possível processar o arquivo de backup. Verifique se é um arquivo .db válido.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -101,7 +85,7 @@ export const WhatsAppViewer = ({ dbFile, onReset }: WhatsAppViewerProps) => {
         
         <ChatPanel
           conversation={selectedConversation}
-          dbFile={dbFile}
+          sqliteProcessor={sqliteProcessor}
         />
       </div>
     </div>

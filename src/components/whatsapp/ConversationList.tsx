@@ -1,7 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Conversation } from "../WhatsAppViewer";
+import type { Conversation } from "@/lib/sqlite-processor";
 
 interface ConversationListProps {
   conversations: Conversation[];
