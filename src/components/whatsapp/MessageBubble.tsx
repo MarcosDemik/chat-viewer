@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Check, CheckCheck, Paperclip } from "lucide-react";
-import type { Message } from "./ChatMessages";
+import type { Message } from "@/lib/sqlite-processor";
 
 interface MessageBubbleProps {
   message: Message;

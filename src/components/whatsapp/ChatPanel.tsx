@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { MessageSquare } from "lucide-react";
-import type { Conversation } from "../WhatsAppViewer";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSearch } from "./ChatSearch";
+import type { Conversation, SQLiteProcessor } from "@/lib/sqlite-processor";
 
 interface ChatPanelProps {
   conversation: Conversation | null;
-  dbFile: File;
+  sqliteProcessor: SQLiteProcessor | null;
 }
 
-export const ChatPanel = ({ conversation, dbFile }: ChatPanelProps) => {
+export const ChatPanel = ({ conversation, sqliteProcessor }: ChatPanelProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
@@ -62,7 +62,7 @@ export const ChatPanel = ({ conversation, dbFile }: ChatPanelProps) => {
       {/* Messages */}
       <ChatMessages
         conversation={conversation}
-        dbFile={dbFile}
+        sqliteProcessor={sqliteProcessor}
         searchTerm={searchTerm}
         onSearchResultsChange={setSearchResults}
         highlightedMessageId={searchResults[currentSearchIndex]}

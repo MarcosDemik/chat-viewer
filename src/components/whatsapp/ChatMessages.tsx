@@ -2,26 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { Conversation } from "../WhatsAppViewer";
-
-export interface Message {
-  id: number;
-  nome_contato: string;
-  data_hora_envio: string;
-  tipo_mensagem: string;
-  nome_remetente_grupo: string | null;
-  status_mensagem: string | null;
-  texto_mensagem: string | null;
-  anexo_tipo: string | null;
-  anexo_tamanho: string | null;
-  anexo_id_arquivo: string | null;
-}
+import type { Conversation, SQLiteProcessor, Message } from "@/lib/sqlite-processor";
 
 interface ChatMessagesProps {
   conversation: Conversation;
-  dbFile: File;
+  sqliteProcessor: SQLiteProcessor | null;
   searchTerm: string;
   onSearchResultsChange: (results: number[]) => void;
   highlightedMessageId?: number;
@@ -31,7 +17,7 @@ const MESSAGES_PER_BATCH = 400;
 
 export const ChatMessages = ({
   conversation,
-  dbFile,
+  sqliteProcessor,
   searchTerm,
   onSearchResultsChange,
   highlightedMessageId,
@@ -45,15 +31,15 @@ export const ChatMessages = ({
 
   useEffect(() => {
     loadInitialMessages();
-  }, [conversation]);
+  }, [conversation, sqliteProcessor]);
 
   useEffect(() => {
-    if (searchTerm && messages.length > 0) {
+    if (searchTerm && sqliteProcessor) {
       performSearch();
     } else {
       onSearchResultsChange([]);
     }
-  }, [searchTerm]);
+  }, [searchTerm, sqliteProcessor]);
 
   useEffect(() => {
     if (highlightedMessageId && messageRefs.current[highlightedMessageId]) {
@@ -65,38 +51,27 @@ export const ChatMessages = ({
   }, [highlightedMessageId]);
 
   const loadInitialMessages = async () => {
+    if (!sqliteProcessor) return;
+    
     try {
       setIsLoading(true);
-      const reader = new FileReader();
       
-      reader.onload = async (e) => {
-        const base64Data = e.target?.result as string;
-        
-        const { data, error } = await supabase.functions.invoke('whatsapp-backup', {
-          body: {
-            action: 'get_messages',
-            dbFile: base64Data.split(',')[1],
-            conversationId: conversation.id,
-            limit: MESSAGES_PER_BATCH,
-            offset: 0,
-          },
-        });
+      const { messages: loadedMessages, hasMore: more } = sqliteProcessor.getMessages(
+        conversation.id,
+        MESSAGES_PER_BATCH,
+        0
+      );
 
-        if (error) throw error;
+      setMessages(loadedMessages);
+      setHasMore(more);
+      setIsLoading(false);
 
-        setMessages(data.messages || []);
-        setHasMore(data.hasMore || false);
-        setIsLoading(false);
-
-        // Scroll to bottom after loading
-        setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-          }
-        }, 100);
-      };
-
-      reader.readAsDataURL(dbFile);
+      // Scroll to bottom after loading
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 100);
     } catch (error) {
       console.error('Erro ao carregar mensagens:', error);
       toast({
@@ -108,59 +83,29 @@ export const ChatMessages = ({
     }
   };
 
-  const performSearch = async () => {
+  const performSearch = () => {
+    if (!sqliteProcessor || !searchTerm) return;
+    
     try {
-      const reader = new FileReader();
-      
-      reader.onload = async (e) => {
-        const base64Data = e.target?.result as string;
-        
-        const { data, error } = await supabase.functions.invoke('whatsapp-backup', {
-          body: {
-            action: 'search_messages',
-            dbFile: base64Data.split(',')[1],
-            conversationId: conversation.id,
-            searchTerm,
-          },
-        });
-
-        if (error) throw error;
-
-        onSearchResultsChange(data.messageIds || []);
-      };
-
-      reader.readAsDataURL(dbFile);
+      const messageIds = sqliteProcessor.searchMessages(conversation.id, searchTerm);
+      onSearchResultsChange(messageIds);
     } catch (error) {
       console.error('Erro ao buscar mensagens:', error);
     }
   };
 
-  const loadMoreMessages = async () => {
-    if (!hasMore || isLoading) return;
+  const loadMoreMessages = () => {
+    if (!hasMore || isLoading || !sqliteProcessor) return;
 
     try {
-      const reader = new FileReader();
-      
-      reader.onload = async (e) => {
-        const base64Data = e.target?.result as string;
-        
-        const { data, error } = await supabase.functions.invoke('whatsapp-backup', {
-          body: {
-            action: 'get_messages',
-            dbFile: base64Data.split(',')[1],
-            conversationId: conversation.id,
-            limit: MESSAGES_PER_BATCH,
-            offset: messages.length,
-          },
-        });
+      const { messages: loadedMessages, hasMore: more } = sqliteProcessor.getMessages(
+        conversation.id,
+        MESSAGES_PER_BATCH,
+        messages.length
+      );
 
-        if (error) throw error;
-
-        setMessages((prev) => [...data.messages, ...prev]);
-        setHasMore(data.hasMore || false);
-      };
-
-      reader.readAsDataURL(dbFile);
+      setMessages((prev) => [...loadedMessages, ...prev]);
+      setHasMore(more);
     } catch (error) {
       console.error('Erro ao carregar mais mensagens:', error);
     }
