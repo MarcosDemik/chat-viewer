@@ -57,6 +57,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        message: {
+          sent: "hsl(var(--message-sent))",
+          "sent-foreground": "hsl(var(--message-sent-foreground))",
+          received: "hsl(var(--message-received))",
+          "received-foreground": "hsl(var(--message-received-foreground))",
+        },
+        "search-highlight": {
+          DEFAULT: "hsl(var(--search-highlight))",
+          foreground: "hsl(var(--search-highlight-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
