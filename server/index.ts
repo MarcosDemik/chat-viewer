@@ -27,14 +27,17 @@ app.get("/api/chats", (req: Request, res: Response) => {
     const rows = db
       .prepare(
         `
-        SELECT 
-          nome_contato            AS chat_name,
-          COUNT(*)                AS total_mensagens,
-          MIN(data_hora_envio)    AS primeira_msg,
-          MAX(data_hora_envio)    AS ultima_msg
+        SELECT
+          source_file,
+          COALESCE(
+            MAX(NULLIF(TRIM(nome_contato), '')),
+            source_file
+          )                   AS chat_name,
+          COUNT(*)             AS total_mensagens,
+          MIN(data_hora_envio) AS primeira_msg,
+          MAX(data_hora_envio) AS ultima_msg
         FROM messages
-        WHERE nome_contato IS NOT NULL AND nome_contato <> ''
-        GROUP BY nome_contato
+        GROUP BY source_file
         ORDER BY ultima_msg DESC
       `
       )
@@ -49,6 +52,7 @@ app.get("/api/chats", (req: Request, res: Response) => {
     });
   }
 });
+
 
 /**
  * Lista mensagens de um contato pelo nome_contato, com paginação
