@@ -1,58 +1,112 @@
 /**
  * AttachmentManager - Gerencia anexos carregados pelo usuário
- * 
- * CRÍTICO: Busca arquivos APENAS pelo nome base, ignorando extensão
- * Exemplo: "arquivo.webm" no banco encontra "arquivo.png" nos anexos
+ *
+ * Agora ele indexa:
+ *  - pelo nome base completo (sem extensão)
+ *  - e também por ID (UUID) que estiver dentro do nome
+ *
+ * Exemplo de arquivo:
+ *  "2025-10-29 18 17 33 - Joseane Ônix - Produtos para Harmonizaçã - 72a52c56-5494-40a4-9d26-35acf057c8a2.jpg"
+ *
+ * No banco:
+ *  anexo_id_arquivo = "72a52c56-5494-40a4-9d26-35acf057c8a2"
+ *
+ * Quando o app pedir pelo ID, ele encontra o arquivo acima.
  */
 export class AttachmentManager {
+  // nome base completo (sem extensão) -> File
   private attachmentMap: Map<string, File> = new Map();
+  // id (uuid) extraído do nome -> File
+  private idMap: Map<string, File> = new Map();
 
   /**
-   * Indexa arquivos da pasta anexos/ por nome base (sem extensão)
+   * Indexa arquivos da pasta anexos/
    */
   async loadAttachments(files: FileList | File[]) {
     console.log(`Indexando ${files.length} arquivos de anexo...`);
-    
+
     for (const file of Array.from(files)) {
-      // Extrair nome base sem extensão
       const fileName = file.name;
-      const baseName = this.getBaseName(fileName);
-      
-      // Indexar por nome base (sem extensão)
-      this.attachmentMap.set(baseName.toLowerCase(), file);
-      
-      console.log(`Indexado: ${baseName} -> ${fileName}`);
+      const baseName = this.getBaseName(fileName).toLowerCase();
+
+      // 1) indexa pelo nome base completo
+      this.attachmentMap.set(baseName, file);
+
+      // 2) tenta extrair um UUID do nome e indexar também por ele
+      const uuid = this.extractUuid(baseName);
+      if (uuid) {
+        this.idMap.set(uuid, file);
+        console.log(`Indexado UUID: ${uuid} -> ${fileName}`);
+      } else {
+        console.log(`Indexado baseName: ${baseName} -> ${fileName}`);
+      }
     }
-    
-    console.log(`Total de ${this.attachmentMap.size} anexos indexados`);
+
+    console.log(
+      `Total de ${this.attachmentMap.size} nomes base e ${this.idMap.size} UUIDs indexados`
+    );
   }
 
   /**
-   * Busca anexo APENAS pelo nome base, ignorando extensão
-   * 
-   * CRÍTICO: Remove extensão antes de buscar
+   * Busca anexo:
+   *  - se receber só o ID (ex: "72a5..."), procura em idMap
+   *  - senão tenta pelo nome base completo
    */
-  getAttachment(fileNameWithExt: string): File | null {
-    const baseName = this.getBaseName(fileNameWithExt);
-    const file = this.attachmentMap.get(baseName.toLowerCase());
-    
+  getAttachment(fileNameOrId: string): File | null {
+    if (!fileNameOrId) return null;
+
+    const baseName = this.getBaseName(fileNameOrId).toLowerCase();
+
+    // 1) tenta direto pelo nome base (caso o banco traga nome completo)
+    let file = this.attachmentMap.get(baseName);
     if (file) {
-      console.log(`Anexo encontrado: ${fileNameWithExt} -> ${file.name}`);
-    } else {
-      console.log(`Anexo NÃO encontrado: ${fileNameWithExt} (buscando por: ${baseName})`);
+      console.log(`Anexo encontrado por baseName: ${baseName} -> ${file.name}`);
+      return file;
     }
-    
-    return file || null;
+
+    // 2) tenta tratar o parâmetro como UUID (caso o banco traga só o ID)
+    const uuid = this.extractUuid(baseName);
+    if (uuid) {
+      file = this.idMap.get(uuid) || null;
+      if (file) {
+        console.log(`Anexo encontrado por UUID: ${uuid} -> ${file.name}`);
+        return file;
+      }
+    }
+
+    console.log(
+      `Anexo NÃO encontrado: "${fileNameOrId}" (baseName: "${baseName}", uuid: "${uuid || "nenhum"}")`
+    );
+    return null;
   }
 
   /**
    * Cria URL para exibir anexo
    */
-  getAttachmentURL(fileNameWithExt: string): string | null {
-    const file = this.getAttachment(fileNameWithExt);
+  getAttachmentURL(fileNameOrId: string): string | null {
+    const file = this.getAttachment(fileNameOrId);
     if (!file) return null;
-    
     return URL.createObjectURL(file);
+  }
+
+  /**
+   * Detecta tipo de mídia pelo MIME type do arquivo real
+   */
+  getMediaType(
+    fileNameOrId: string
+  ): "image" | "video" | "audio" | "document" | "unknown" {
+    const file = this.getAttachment(fileNameOrId);
+    if (!file) return "unknown";
+
+    const mimeType = file.type.toLowerCase();
+
+    if (mimeType.startsWith("image/")) return "image";
+    if (mimeType.startsWith("video/")) return "video";
+    if (mimeType.startsWith("audio/")) return "audio";
+    if (mimeType.includes("pdf") || mimeType.includes("document"))
+      return "document";
+
+    return "unknown";
   }
 
   /**
@@ -60,58 +114,37 @@ export class AttachmentManager {
    * Exemplo: "arquivo.webm" -> "arquivo"
    */
   private getBaseName(fileName: string): string {
-    const lastDot = fileName.lastIndexOf('.');
+    const lastDot = fileName.lastIndexOf(".");
     if (lastDot === -1) return fileName;
     return fileName.substring(0, lastDot);
   }
 
   /**
-   * Verifica se tem anexos carregados
+   * Tenta extrair um UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx) de uma string
    */
+  private extractUuid(text: string): string | null {
+    const match = text.match(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+    );
+    return match ? match[0].toLowerCase() : null;
+  }
+
   hasAttachments(): boolean {
-    return this.attachmentMap.size > 0;
+    return this.attachmentMap.size > 0 || this.idMap.size > 0;
   }
 
-  /**
-   * Retorna quantidade de anexos
-   */
   getCount(): number {
-    return this.attachmentMap.size;
+    // não é perfeito, mas bom para debug
+    return Math.max(this.attachmentMap.size, this.idMap.size);
   }
 
-  /**
-   * Lista todos os nomes base indexados
-   */
   getIndexedNames(): string[] {
     return Array.from(this.attachmentMap.keys());
   }
 
-  /**
-   * Limpa todos os anexos
-   */
   clear() {
-    // Revoke all object URLs to prevent memory leaks
-    for (const file of this.attachmentMap.values()) {
-      // Note: We can't revoke URLs created elsewhere, but we clean the map
-    }
     this.attachmentMap.clear();
-    console.log('Anexos limpos da memória');
-  }
-
-  /**
-   * Detecta tipo de mídia pelo MIME type do arquivo real
-   */
-  getMediaType(fileNameWithExt: string): 'image' | 'video' | 'audio' | 'document' | 'unknown' {
-    const file = this.getAttachment(fileNameWithExt);
-    if (!file) return 'unknown';
-
-    const mimeType = file.type.toLowerCase();
-    
-    if (mimeType.startsWith('image/')) return 'image';
-    if (mimeType.startsWith('video/')) return 'video';
-    if (mimeType.startsWith('audio/')) return 'audio';
-    if (mimeType.includes('pdf') || mimeType.includes('document')) return 'document';
-    
-    return 'unknown';
+    this.idMap.clear();
+    console.log("Anexos limpos da memória");
   }
 }
