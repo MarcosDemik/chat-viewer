@@ -1,18 +1,15 @@
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, FileText } from "lucide-react"; // <- adicionei FileText
 import type { Message } from "@/lib/sqlite-processor";
-import type { AttachmentManager } from "@/lib/attachment-manager";
 import { AttachmentPreview } from "./AttachmentPreview";
 
 interface MessageBubbleProps {
   message: Message;
-  attachmentManager: AttachmentManager | null;
   isHighlighted?: boolean;
 }
 
 export const MessageBubble = ({
   message,
-  attachmentManager,
   isHighlighted,
 }: MessageBubbleProps) => {
   const isSent = message.tipo_mensagem === "Enviadas";
@@ -37,8 +34,7 @@ export const MessageBubble = ({
     }
   };
 
-  // Notificações de sistema (criptografia, "esta empresa trabalha com outras empresas...", etc.)
-  // ficam centralizadas, em um chip arredondado como no WhatsApp.
+  // Notificações centralizadas
   if (isNotification) {
     return (
       <div
@@ -56,7 +52,7 @@ export const MessageBubble = ({
     );
   }
 
-  // Mensagens "normais"
+  // Mensagens normais
   return (
     <div className={cn("flex", isSent ? "justify-end" : "justify-start")}>
       <div
@@ -75,13 +71,27 @@ export const MessageBubble = ({
           </div>
         )}
 
-        {/* Anexo */}
+        {/* FALLOFF: tem tipo de anexo mas NÃO tem arquivo/id -> mostrar "documento não encontrado" */}
+        {message.anexo_tipo && !message.anexo_id_arquivo && (
+          <div className="mb-2 flex items-center gap-2 rounded bg-background/50 p-2 text-xs">
+            <FileText className="h-4 w-4" />
+            <div className="flex-1">
+              <div className="font-medium">
+                {message.anexo_tipo} não encontrado
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Arquivo de mídia não está presente neste backup.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Anexo normal (quando temos id_arquivo) */}
         {message.anexo_id_arquivo && message.anexo_tipo && (
           <AttachmentPreview
             anexoIdArquivo={message.anexo_id_arquivo}
             anexoTipo={message.anexo_tipo}
             anexoTamanho={message.anexo_tamanho}
-            attachmentManager={attachmentManager}
           />
         )}
 

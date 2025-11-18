@@ -1,95 +1,136 @@
-import { Paperclip, Image, Video, Music, FileText } from "lucide-react";
-import { AttachmentManager } from "@/lib/attachment-manager";
+// @ts-nocheck
+
+import { useState, useRef } from "react";
+import { Paperclip, Image, Video, Music, FileText, X } from "lucide-react";
+
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://192.168.4.87:3001";
 
 interface AttachmentPreviewProps {
   anexoIdArquivo: string;
   anexoTipo: string;
   anexoTamanho: string | null;
-  attachmentManager: AttachmentManager | null;
 }
 
 export const AttachmentPreview = ({
   anexoIdArquivo,
   anexoTipo,
   anexoTamanho,
-  attachmentManager,
 }: AttachmentPreviewProps) => {
-  const formatFileSize = (bytes: string | null) => {
-    if (!bytes) return "";
-    const size = parseInt(bytes);
-    if (isNaN(size)) return bytes;
+  if (!anexoIdArquivo) return null;
 
-    if (size < 1024) return `${size} B`;
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const lastPosRef = useRef({ x: 0, y: 0 });
+
+  const url = `${API_BASE}/api/attachments/${encodeURIComponent(
+    anexoIdArquivo
+  )}`;
+
+  const handleClick = () => {
+    window.open(url, "_blank");
   };
 
-  // Infos do anexo real (quando a pasta de anexos foi carregada)
-  const attachmentURL = attachmentManager?.getAttachmentURL(anexoIdArquivo);
-  const mediaType = attachmentManager?.getMediaType(anexoIdArquivo);
-  const realFile = attachmentManager?.getAttachment(anexoIdArquivo);
-  const realFileName = realFile?.name || anexoIdArquivo;
-
-  // Detecta extensão só para decidir COMO renderizar (imagem/pdf/etc),
-  // sem mudar o tipo vindo do banco.
-  const baseName = realFileName.split(/[\\/]/).pop() ?? realFileName;
+  const baseName = anexoIdArquivo.split(/[\\/]/).pop() ?? anexoIdArquivo;
   const ext = baseName.split(".").pop()?.toLowerCase() ?? "";
-  const isPdf = ext === "pdf";
+  const tipoLower = (anexoTipo || "").toLowerCase();
 
-  const mt = (mediaType || "").toLowerCase();
-  const isImageMedia = mt === "image" || mt.startsWith("image/");
-  const isVideoMedia = mt === "video" || mt.startsWith("video/");
-  const isAudioMedia = mt === "audio" || mt.startsWith("audio/");
+  const isImage =
+    tipoLower === "image" ||
+    tipoLower.includes("imagem") ||
+    ["jpg", "jpeg", "png", "webp", "gif"].includes(ext);
 
-  // Ícone baseado principalmente no tipo literal + extensão
-  const getIconByType = (tipo: string) => {
-    const tipoLower = (tipo || "").toLowerCase();
+  const isVideo =
+    tipoLower === "video" ||
+    tipoLower.includes("vídeo") ||
+    ["mp4", "mov", "mkv", "webm"].includes(ext);
 
-    if (isPdf) {
-      return <FileText className="h-4 w-4" />;
-    }
+  const isAudio =
+    tipoLower.includes("audio") ||
+    tipoLower.includes("áudio") ||
+    ["mp3", "wav", "ogg", "m4a", "opus"].includes(ext);
 
-    if (tipoLower.includes("imagem") || tipoLower === "image") {
-      return <Image className="h-4 w-4" />;
-    }
-    if (tipoLower.includes("video") || tipoLower === "vídeo") {
-      return <Video className="h-4 w-4" />;
-    }
-    if (tipoLower.includes("áudio") || tipoLower.includes("audio")) {
-      return <Music className="h-4 w-4" />;
-    }
-    if (tipoLower.includes("documento") || tipoLower === "document") {
-      return <FileText className="h-4 w-4" />;
-    }
+  const icon =
+    tipoLower.includes("imagem") || tipoLower === "image" ? (
+      <Image className="h-4 w-4" />
+    ) : tipoLower.includes("video") || tipoLower.includes("vídeo") ? (
+      <Video className="h-4 w-4" />
+    ) : tipoLower.includes("audio") || tipoLower.includes("áudio") ? (
+      <Music className="h-4 w-4" />
+    ) : (
+      <FileText className="h-4 w-4" />
+    );
 
-    return <Paperclip className="h-4 w-4" />;
+  const openImageModal = () => {
+    setScale(1);
+    setTranslate({ x: 0, y: 0 });
+    setShowImageModal(true);
   };
 
-  const handleOpenAttachment = () => {
-    if (!attachmentURL) return;
-    window.open(attachmentURL, "_blank");
+  // zoom com scroll
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    setScale((prev) => {
+      const next = prev + delta;
+      return Math.min(5, Math.max(0.5, next));
+    });
   };
 
-  // Quando temos o anexo real
-  if (attachmentURL && mediaType) {
-    return (
-      <div className="mb-2 space-y-2">
-        {/* Preview visual só para imagem/vídeo/áudio */}
-        {isImageMedia && (
-          <div className="rounded-lg overflow-hidden bg-background/20 max-w-sm">
+  // pan com mouse
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsPanning(true);
+    lastPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    const dx = e.clientX - lastPosRef.current.x;
+    const dy = e.clientY - lastPosRef.current.y;
+    lastPosRef.current = { x: e.clientX, y: e.clientY };
+    setTranslate((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+  };
+
+  const endPan = () => {
+    setIsPanning(false);
+  };
+
+  return (
+    <>
+      <div className="mt-2 space-y-2">
+        {/* PREVIEW AUTOMÁTICO – só para imagem */}
+        {isImage && (
+          <div className="rounded-lg overflow-hidden bg-muted/40 max-w-sm">
             <img
-              src={attachmentURL}
+              src={url}
               alt={baseName}
-              className="w-full h-auto max-h-64 object-contain"
+              className="w-full h-auto max-h-64 object-contain cursor-zoom-in"
+              onClick={openImageModal}
+              draggable={false}
             />
           </div>
         )}
 
-        {isVideoMedia && (
-          <div className="rounded-lg overflow-hidden bg-background/20 max-w-sm">
+        {/* Player inline para ÁUDIO, só baixa quando der play */}
+        {isAudio && (
+          <div className="rounded-lg bg-muted/40 p-2 max-w-sm">
+            <audio src={url} controls preload="none" className="w-full">
+              Seu navegador não suporta áudio.
+            </audio>
+          </div>
+        )}
+
+        {/* Preview de vídeo (mantido) */}
+        {isVideo && (
+          <div className="rounded-lg overflow-hidden bg-muted/40 max-w-sm">
             <video
-              src={attachmentURL}
+              src={url}
               controls
+              preload="none"
               className="w-full h-auto max-h-64"
             >
               Seu navegador não suporta vídeo.
@@ -97,53 +138,73 @@ export const AttachmentPreview = ({
           </div>
         )}
 
-        {isAudioMedia && (
-          <div className="rounded-lg bg-background/20 p-2">
-            <audio src={attachmentURL} controls className="w-full">
-              Seu navegador não suporta áudio.
-            </audio>
-          </div>
-        )}
-
-        {/* PDF e qualquer outro tipo: cartão clicável que abre o arquivo */}
-        <button
-          type="button"
-          onClick={handleOpenAttachment}
-          className="flex w-full items-center gap-2 rounded bg-background/50 p-2 text-xs hover:bg-background/70 transition-colors"
+        {/* CARD de anexo – mesmo visual de antes */}
+        <div
+          className="flex items-center gap-2 rounded-md border bg-muted/40 px-2 py-1 text-xs cursor-pointer hover:bg-muted/70"
+          onClick={handleClick}
         >
-          {getIconByType(anexoTipo)}
-          <div className="flex-1 text-left">
-            <div className="font-medium">
-              {anexoTipo}{" "}
+          <div className="flex h-7 w-7 items-center justify-center rounded bg-background border">
+            {icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Paperclip className="h-3 w-3" />
+              <span>Anexo</span>
               {anexoTamanho && `• ${formatFileSize(anexoTamanho)}`}
             </div>
             <div className="text-muted-foreground truncate">
-              {baseName}
+              {anexoIdArquivo}
             </div>
           </div>
-        </button>
+        </div>
       </div>
-    );
-  }
 
-  // Fallback: apenas info do arquivo (pasta de anexos não carregada)
-  return (
-    <div className="mb-2 flex items-center gap-2 rounded bg-background/50 p-2 text-xs">
-      {getIconByType(anexoTipo)}
-      <div className="flex-1">
-        <div className="font-medium">
-          {anexoTipo}{" "}
-          {anexoTamanho && `• ${formatFileSize(anexoTamanho)}`}
-        </div>
-        <div className="text-muted-foreground truncate">
-          {anexoIdArquivo}
-        </div>
-        {!attachmentManager?.hasAttachments() && (
-          <div className="text-muted-foreground text-[10px] mt-1">
-            Carregue a pasta de anexos para visualizar
+      {/* MODAL de imagem com zoom/pan e cursor de mover em tudo */}
+      {showImageModal && isImage && (
+        <div className="fixed inset-0 z-50 bg-black/70 cursor-move">
+          {/* botão fechar – total esquerda superior, também com cursor de mover */}
+          <button
+            className="absolute top-0 left-0 m-4 rounded-full bg-black/70 text-white p-2 hover:bg-black/90 cursor-move"
+            onClick={() => setShowImageModal(false)}
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {/* área da imagem com zoom/pan */}
+          <div
+            className="w-full h-full flex items-center justify-center overflow-hidden cursor-move"
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={endPan}
+            onMouseLeave={endPan}
+          >
+            <div
+              className="cursor-move"
+              style={{
+                transform: `translate3d(${translate.x}px, ${translate.y}px, 0) scale(${scale})`,
+                transition: isPanning ? "none" : "transform 0.05s linear",
+              }}
+            >
+              <img
+                src={url}
+                alt={baseName}
+                className="max-w-[90vw] max-h-[90vh] object-contain select-none"
+                draggable={false}
+              />
+            </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 };
+
+function formatFileSize(sizeStr: string | null): string {
+  if (!sizeStr) return "";
+  const size = Number(sizeStr);
+  if (Number.isNaN(size) || size <= 0) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}

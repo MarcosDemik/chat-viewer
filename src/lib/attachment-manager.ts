@@ -1,7 +1,7 @@
 /**
  * AttachmentManager - Gerencia anexos carregados pelo usuário
  *
- * Agora ele indexa:
+ * Indexa:
  *  - pelo nome base completo (sem extensão)
  *  - e também por ID (UUID) que estiver dentro do nome
  *
@@ -29,7 +29,7 @@ export class AttachmentManager {
       const fileName = file.name;
       const baseName = this.getBaseName(fileName).toLowerCase();
 
-      // 1) indexa pelo nome base completo
+      // 1) indexa pelo nome base completo (sem extensão)
       this.attachmentMap.set(baseName, file);
 
       // 2) tenta extrair um UUID do nome e indexar também por ele
