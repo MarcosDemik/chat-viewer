@@ -10,4 +10,4 @@ REM 3) nginx: nginx.exe
 wt ^
   new-tab -p "Command Prompt" -d "%ROOT%" --title "Front"  cmd /k "npm run dev" ^; ^
   new-tab -p "Command Prompt" -d "%ROOT%\server" --title "Server" cmd /k "npm run dev" ^; ^
-  new-tab -p "Command Prompt" -d "%ROOT%\ngix" --title "Caller" cmd /k "nginx.exe"
+  new-tab -p "Command Prompt" -d "%ROOT%\nginx-1.28.0" --title "Caller" cmd /k "nginx.exe"

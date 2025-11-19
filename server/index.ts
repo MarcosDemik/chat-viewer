@@ -1,23 +1,33 @@
-// @ts-nocheck
-
 import express, { Request, Response } from "express";
 import cors from "cors";
 import path from "path";
-import fs from "fs"; // <-- NOVO
+import fs from "fs";
 import Database from "better-sqlite3";
+import dotenv from "dotenv";
 
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
+// raiz do projeto: C:\Users\André TI\Desktop\chat-viewer
+const ROOT_DIR = path.join(__dirname, "..");
+
+// se existir no .env, usa DB_PATH de lá, senão cai para o padrão em /data
 const DB_PATH =
   process.env.DB_PATH ||
-  "C:/Users/TI/Documents/ChatScript/whatsapp_chats_todos.db";
+  path.join(ROOT_DIR, "data", "whatsapp_chats.db");
 
+// se existir no .env, usa ATTACHMENTS_ROOT de lá, senão cai para o padrão em /anexos
 const ATTACHMENTS_ROOT =
   process.env.ATTACHMENTS_ROOT ||
-  "C:/Users/TI/Desktop/Backup Joseane - PessoaPessoa/Anexos";
+  path.join(ROOT_DIR, "anexos");
+
+console.log("DB_PATH:", DB_PATH);
+console.log("ATTACHMENTS_ROOT:", ATTACHMENTS_ROOT);
 
 const app = express();
 app.use(cors());
 
 const db = new Database(DB_PATH, { readonly: true });
+
 
 /**
  * Lista chats agrupando por nome_contato
