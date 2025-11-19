@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Paperclip, Image, Video, Music, FileText, X } from "lucide-react";
 
 const API_BASE =
@@ -68,10 +68,22 @@ export const AttachmentPreview = ({
     setTranslate({ x: 0, y: 0 });
     setShowImageModal(true);
   };
+  // quando o modal de imagem estiver aberto, trava o scroll da página
+  useEffect(() => {
+    if (!showImageModal) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showImageModal]);
 
   // zoom com scroll
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
+    // não usar preventDefault em listener passivo
+    e.stopPropagation();
     const delta = e.deltaY < 0 ? 0.1 : -0.1;
     setScale((prev) => {
       const next = prev + delta;

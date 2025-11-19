@@ -15,7 +15,7 @@ export const ConversationList = ({
   onSelectConversation,
 }: ConversationListProps) => {
   return (
-    <aside className="w-80 border-r border-border bg-sidebar">
+    <aside className="w-[30%]	border-r border-border bg-sidebar">
       <div className="border-b border-sidebar-border p-4">
         <h2 className="font-semibold text-sidebar-foreground">
           Conversas ({conversations.length})
