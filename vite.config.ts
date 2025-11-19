@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0", // pode deixar "::" se quiser, mas 0.0.0.0 é mais simples no IPv4
     port: 8080,
-    allowedHosts: ["chatwpp.com", "localhost", "127.0.0.1"],
+    allowedHosts: ["chatwpp.com", "google.com", "localhost", "127.0.0.1"],
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
